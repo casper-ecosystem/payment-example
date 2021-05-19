@@ -11,7 +11,14 @@ casper-types = "1.1.1"
 
 [[bin]]
 name = "payment_contract"
-path = "src/main.rs"
+path = "src/payment_contract.rs"
+bench = false
+doctest = false
+test = false
+
+[[bin]]
+name = "send_tokens"
+path = "src/send_tokens.rs"
 bench = false
 doctest = false
 test = false

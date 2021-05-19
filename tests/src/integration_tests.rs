@@ -3,7 +3,7 @@ mod tests {
     use casper_engine_test_support::{Code, Hash, SessionBuilder, TestContext, TestContextBuilder};
     use casper_types::{
         account::AccountHash, bytesrepr::FromBytes, runtime_args, CLTyped, PublicKey, RuntimeArgs,
-        SecretKey, U512,
+        SecretKey, U512, URef
     };
     use std::convert::TryInto;
 
@@ -43,6 +43,7 @@ mod tests {
                 .with_authorization_keys(&[admin_account_addr])
                 .build();
             context.run(session);
+            
             let contract_hash = context
                 .query(admin_account_addr, &["payment_contract_hash".to_string()])
                 .unwrap_or_else(|_| panic!("payment_contract_hash contract not found"))
@@ -144,6 +145,40 @@ mod tests {
                 },
             );
         }
+
+        pub fn send_tokens(&mut self, sender: AccountHash) {
+            let code = Code::from("send_tokens.wasm");
+            let args = runtime_args! {};
+            let session = SessionBuilder::new(code, args)
+                .with_address(sender)
+                .with_authorization_keys(&[sender])
+                .build();
+            self.context.run(session);
+        }
+
+        pub fn collect(&mut self, sender: AccountHash, recipient: AccountHash) {
+            let code = Code::from("collect.wasm");
+            let args = runtime_args! {
+                "recipient" => recipient
+            };
+            let session = SessionBuilder::new(code, args)
+                .with_address(sender)
+                .with_authorization_keys(&[sender])
+                .build();
+            self.context.run(session);
+        }
+
+        pub fn get_contract_balance(&self) -> U512 {
+            let contract_purse: URef = self.context
+                .query(self.admin_account.1, &[
+                    "payment_contract".to_string(),
+                    "contract_purse_wrapper".to_string()])
+                .unwrap()
+                .into_t()
+                .unwrap();
+            let balance = self.context.get_balance(contract_purse.addr());
+            balance
+        }
     }
 
     #[test]
@@ -152,22 +187,29 @@ mod tests {
         let mut context = PaymentContract::deploy();
 
         // Print the balance of all 3 users
-        println!("{:?}", context.get_all_accounts_balance());
+        println!("1: Accounts: {:?}", context.get_all_accounts_balance());
+        println!("1: Contract: {:?}", context.get_contract_balance());
 
+        context.send_tokens(context.admin_account.1);
+
+        println!("2: Accounts: {:?}", context.get_all_accounts_balance());
+        println!("2: Contract: {:?}", context.get_contract_balance());
+
+        // println!("2: \n{:?}", context.get_all_accounts_balance());
         // Pay the contract 777 motes and assert whether the contract received it
-        context.pay_contract(U512::from(777), context.participant_two.1);
-        assert_eq!(context.contract_balance(), U512::from(777));
+        // context.pay_contract(U512::from(777), context.participant_two.1);
+        // assert_eq!(context.contract_balance(), U512::from(777));
 
-        // Pay the admin, and check their balance
-        context.transfer(
-            context.admin_account.1,
-            U512::from(500000000000u64),
-            context.participant_three.1,
-        );
-        assert_eq!(
-            context.balance_of(context.admin_account.1),
-            U512::from(499999000000000000u64)
-        );
+        // // Pay the admin, and check their balance
+        // context.transfer(
+        //     context.admin_account.1,
+        //     U512::from(500000000000u64),
+        //     context.participant_three.1,
+        // );
+        // assert_eq!(
+        //     context.balance_of(context.admin_account.1),
+        //     U512::from(499999000000000000u64)
+        // );
     }
 }
 

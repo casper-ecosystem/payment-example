@@ -3,7 +3,7 @@ mod tests {
     use casper_engine_test_support::{Code, Hash, SessionBuilder, TestContext, TestContextBuilder};
     use casper_types::{
         account::AccountHash, bytesrepr::FromBytes, runtime_args, CLTyped, PublicKey, RuntimeArgs,
-        SecretKey, U512, URef
+        SecretKey, URef, U512,
     };
     use std::convert::TryInto;
 
@@ -43,7 +43,7 @@ mod tests {
                 .with_authorization_keys(&[admin_account_addr])
                 .build();
             context.run(session);
-            
+
             let contract_hash = context
                 .query(admin_account_addr, &["payment_contract_hash".to_string()])
                 .unwrap_or_else(|_| panic!("payment_contract_hash contract not found"))
@@ -77,7 +77,7 @@ mod tests {
             )
         }
 
-        fn query_contract<T: CLTyped + FromBytes>(
+        fn _query_contract<T: CLTyped + FromBytes>(
             &self,
             caller: AccountHash,
             name: &str,
@@ -99,7 +99,7 @@ mod tests {
             }
         }
 
-        fn call(&mut self, caller: AccountHash, method: &str, args: RuntimeArgs) {
+        fn _call(&mut self, caller: AccountHash, method: &str, args: RuntimeArgs) {
             let code = Code::Hash(self.contract_hash, method.to_string());
             let session = SessionBuilder::new(code, args)
                 .with_address(caller)
@@ -108,47 +108,11 @@ mod tests {
             self.context.run(session);
         }
 
-        pub fn balance_of(&mut self, account: AccountHash) -> U512 {
-            self.call(account, "my_balance", RuntimeArgs::default());
-            self.query_contract(account, "caller_balance")
-                .unwrap_or_default()
-        }
-
-        pub fn contract_balance(&mut self) -> U512 {
-            self.call(
-                self.admin_account.1,
-                "get_contract_balance",
-                RuntimeArgs::default(),
-            );
-            self.query_contract(self.admin_account.1, "contract_balance")
-                .unwrap_or_default()
-        }
-
-        pub fn transfer(&mut self, recipient: AccountHash, amount: U512, sender: AccountHash) {
-            println!("transferring {} from {} to {}", amount, sender, recipient);
-            self.call(
-                sender,
-                "transfer_to",
-                runtime_args! {
-                    "recipient" => recipient,
-                    "amount" => amount
-                },
-            );
-        }
-
-        pub fn pay_contract(&mut self, amount: U512, sender: AccountHash) {
-            self.call(
-                sender,
-                "pay_contract",
-                runtime_args! {
-                    "amount" => amount
-                },
-            );
-        }
-
         pub fn send_tokens(&mut self, sender: AccountHash) {
             let code = Code::from("send_tokens.wasm");
-            let args = runtime_args! {};
+            let args = runtime_args! {
+                "payment_contract" => self.contract_hash
+            };
             let session = SessionBuilder::new(code, args)
                 .with_address(sender)
                 .with_authorization_keys(&[sender])
@@ -158,8 +122,11 @@ mod tests {
 
         pub fn collect(&mut self, sender: AccountHash, recipient: AccountHash) {
             let code = Code::from("collect.wasm");
+            // if we ask for as the amount than there is in the contract, we only collect what's in the contract.
             let args = runtime_args! {
-                "recipient" => recipient
+                "payment_contract" => self.contract_hash,
+                "recipient" => recipient,
+                "amount" => U512::from(100000000000000000u64)
             };
             let session = SessionBuilder::new(code, args)
                 .with_address(sender)
@@ -169,10 +136,15 @@ mod tests {
         }
 
         pub fn get_contract_balance(&self) -> U512 {
-            let contract_purse: URef = self.context
-                .query(self.admin_account.1, &[
-                    "payment_contract".to_string(),
-                    "contract_purse_wrapper".to_string()])
+            let contract_purse: URef = self
+                .context
+                .query(
+                    self.admin_account.1,
+                    &[
+                        "payment_contract".to_string(),
+                        "contract_purse_wrapper".to_string(),
+                    ],
+                )
                 .unwrap()
                 .into_t()
                 .unwrap();
@@ -190,26 +162,30 @@ mod tests {
         println!("1: Accounts: {:?}", context.get_all_accounts_balance());
         println!("1: Contract: {:?}", context.get_contract_balance());
 
+        // send tokens from admin to contract
         context.send_tokens(context.admin_account.1);
 
+        // look at balances again
         println!("2: Accounts: {:?}", context.get_all_accounts_balance());
         println!("2: Contract: {:?}", context.get_contract_balance());
 
-        // println!("2: \n{:?}", context.get_all_accounts_balance());
-        // Pay the contract 777 motes and assert whether the contract received it
-        // context.pay_contract(U512::from(777), context.participant_two.1);
-        // assert_eq!(context.contract_balance(), U512::from(777));
+        // collect token to a third account
+        context.collect(context.admin_account.1, context.participant_three.1);
 
-        // // Pay the admin, and check their balance
-        // context.transfer(
-        //     context.admin_account.1,
-        //     U512::from(500000000000u64),
-        //     context.participant_three.1,
-        // );
-        // assert_eq!(
-        //     context.balance_of(context.admin_account.1),
-        //     U512::from(499999000000000000u64)
-        // );
+        // tokens are retrieved
+        println!("3: Accounts: {:?}", context.get_all_accounts_balance());
+        println!("3: Contract: {:?}", context.get_contract_balance());
+
+        // another user tries to send tokens to the contract
+        context.send_tokens(context.participant_three.1);
+        println!("4: Accounts: {:?}", context.get_all_accounts_balance());
+        println!("4: Contract: {:?}", context.get_contract_balance());
+
+        // this next should fail, because participant_two does not have the authority to collect tokens
+        context.collect(context.participant_two.1, context.participant_two.1);
+
+        println!("5: Accounts: {:?}", context.get_all_accounts_balance());
+        println!("5: Contract: {:?}", context.get_contract_balance());
     }
 }
 

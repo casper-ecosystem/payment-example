@@ -36,7 +36,7 @@ mod tests {
                 .build();
 
             // load contract into context
-            let code = Code::from("payment_contract.wasm");
+            let code = Code::from("wallet_contract.wasm");
             let args = runtime_args! {};
             let session = SessionBuilder::new(code, args)
                 .with_address(admin_account_addr)
@@ -126,7 +126,6 @@ mod tests {
             let args = runtime_args! {
                 "payment_contract" => self.contract_hash,
                 "recipient" => recipient,
-                "amount" => U512::from(100000000000000000u64)
             };
             let session = SessionBuilder::new(code, args)
                 .with_address(sender)

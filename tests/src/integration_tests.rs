@@ -159,6 +159,7 @@ mod tests {
         let mut context = PaymentContract::deploy();
 
         // Print the balance of all 3 users
+        println!("Default state with payment contract deployed");
         println!("1: Accounts: {:?}", context.get_all_accounts_balance());
         println!("1: Contract: {:?}", context.get_contract_balance());
 
@@ -166,6 +167,7 @@ mod tests {
         context.send_tokens(context.admin_account.1);
 
         // look at balances again
+        println!("\nState after sending tokens from admint to contract");
         println!("2: Accounts: {:?}", context.get_all_accounts_balance());
         println!("2: Contract: {:?}", context.get_contract_balance());
 
@@ -173,17 +175,21 @@ mod tests {
         context.collect(context.admin_account.1, context.participant_three.1);
 
         // tokens are retrieved
+        println!("\nState after collecting contract to third account");
         println!("3: Accounts: {:?}", context.get_all_accounts_balance());
         println!("3: Contract: {:?}", context.get_contract_balance());
 
         // another user tries to send tokens to the contract
         context.send_tokens(context.participant_three.1);
+
+        println!("\nThird account paid contract");
         println!("4: Accounts: {:?}", context.get_all_accounts_balance());
         println!("4: Contract: {:?}", context.get_contract_balance());
 
         // this next should fail, because participant_two does not have the authority to collect tokens
         context.collect(context.participant_two.1, context.participant_two.1);
-
+        println!("\nNow the contract should have the same amount, since only admin should be able to \
+        collect from contract purse, but account two calls the collector method");
         println!("5: Accounts: {:?}", context.get_all_accounts_balance());
         println!("5: Contract: {:?}", context.get_contract_balance());
     }

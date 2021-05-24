@@ -126,7 +126,7 @@ mod tests {
         pub fn send_tokens(&mut self, sender: AccountHash) {
             let code = Code::from("send_tokens.wasm");
             let args = runtime_args! {
-                "payment_contract" => self.contract_hash
+                "payment_contract" => self.package_hash
             };
             let session = SessionBuilder::new(code, args)
                 .with_address(sender)

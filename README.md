@@ -4,36 +4,16 @@ This example demonstrates the effective methods of transferring motes. Motes are
 Each account on the network has its own default purse, creation of new purses inside contracts is possible.
 
 ## Contract Entrypoints
-- transfer_to
-    - params:
-        recipient: AccountHash::cl_type()
-        amount": CLType::U512
-    - return:
-        CLType::Unit
+- "deposit"
+    - parameters:
+        - "purse": CLType::URef
+        - return: CLType::Unit
 
-- transfer_to_short
-    - params:
-        recipient: AccountHash::cl_type()
-        amount: CLType::U512
-    - return:
-        CLType::Unit
-
-- pay_contract
-    - params:
-        amount: CLType::U512 
-    - return:
-        CLType::Unit
-
-- my_balance
-    - params: -
-    - return:
-        CLType::Unit
-
-- get_contract_balance
-    - params: -
-    - return:
-        CLType::Unit
-
+- "collect",
+    - parameters:
+        - "recipient": AccountHash::cl_type())
+    - return: CLType::Unit,
+    - access groups: "group_label"
 
 ## Test accounts data
 - admin

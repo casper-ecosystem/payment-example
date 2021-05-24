@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
+    use casper_engine_test_support::{Code, Hash, SessionBuilder, TestContext, TestContextBuilder};
     use casper_types::ContractPackageHash;
-use casper_engine_test_support::{Code, Hash, SessionBuilder, TestContext, TestContextBuilder};
     use casper_types::{
         account::AccountHash, bytesrepr::FromBytes, runtime_args, CLTyped, PublicKey, RuntimeArgs,
         SecretKey, URef, U512,
@@ -199,13 +199,32 @@ use casper_engine_test_support::{Code, Hash, SessionBuilder, TestContext, TestCo
         println!("\nThird account paid contract");
         println!("4: Accounts: {:?}", context.get_all_accounts_balance());
         println!("4: Contract: {:?}", context.get_contract_balance());
+    }
+
+    #[test]
+    #[should_panic]
+    fn unauth_third_party_collect() {
+        // Setup example contract context
+        let mut context = PaymentContract::deploy();
+
+        // Print the balance of all 3 users
+        println!("Default state with payment contract deployed");
+        println!("1: Accounts: {:?}", context.get_all_accounts_balance());
+        println!("1: Contract: {:?}", context.get_contract_balance());
+
+        // send tokens from admin to contract
+        context.send_tokens(context.admin_account.1);
+
+        // look at balances again
+        println!("\nState after sending tokens from admint to contract");
+        println!("2: Accounts: {:?}", context.get_all_accounts_balance());
+        println!("2: Contract: {:?}", context.get_contract_balance());
 
         // this next should fail, because participant_two does not have the authority to collect tokens
         context.collect(context.participant_two.1, context.participant_two.1);
-        println!("\nNow the contract should have the same amount, since only admin should be able to \
-        collect from contract purse, but account two calls the collector method");
-        println!("5: Accounts: {:?}", context.get_all_accounts_balance());
-        println!("5: Contract: {:?}", context.get_contract_balance());
+        println!("\nYou should not see this as the above line should panic!");
+        println!("3: Accounts: {:?}", context.get_all_accounts_balance());
+        println!("3: Contract: {:?}", context.get_contract_balance());
     }
 }
 

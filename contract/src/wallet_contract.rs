@@ -8,14 +8,12 @@ use casper_contract::{
     contract_api::{runtime, storage, system},
     unwrap_or_revert::UnwrapOrRevert,
 };
-use casper_types::{CLTyped, CLValue, account::AccountHash};
 use casper_types::Group;
+use casper_types::{account::AccountHash, CLTyped, CLValue};
 use casper_types::{
-    contracts::NamedKeys,
-    runtime_args, ApiError, CLType, ContractHash, EntryPoint, EntryPointAccess,
-    EntryPointType, EntryPoints, Parameter, PublicKey, RuntimeArgs, URef, U512,
+    contracts::NamedKeys, CLType, EntryPoint, EntryPointAccess, EntryPointType, EntryPoints,
+    Parameter, URef, U512,
 };
-
 
 #[no_mangle]
 pub extern "C" fn deposit() {
@@ -39,12 +37,8 @@ pub extern "C" fn collect() {
         .unwrap();
     let contract_balance = system::get_purse_balance(contract_purse).unwrap_or_revert();
 
-    system::transfer_from_purse_to_account(
-        contract_purse,
-        recipient,
-        contract_balance,
-        None
-    ).unwrap();
+    system::transfer_from_purse_to_account(contract_purse, recipient, contract_balance, None)
+        .unwrap();
     runtime::ret(CLValue::from_t(contract_balance).unwrap_or_revert());
 }
 
@@ -73,9 +67,7 @@ pub extern "C" fn call() {
 
     entry_points.add_entry_point(EntryPoint::new(
         "collect",
-        vec![
-            Parameter::new("recipient", AccountHash::cl_type()),
-        ],
+        vec![Parameter::new("recipient", AccountHash::cl_type())],
         CLType::Unit,
         EntryPointAccess::Groups(vec![Group::new("group_label")]),
         EntryPointType::Contract,
@@ -84,7 +76,7 @@ pub extern "C" fn call() {
     let mut named_keys = NamedKeys::new();
     let purse = system::create_purse();
     named_keys.insert("contract_purse".to_string(), purse.into());
-    
+
     // Added for the testing convinience.
     named_keys.insert(
         "contract_purse_wrapper".to_string(),
@@ -98,7 +90,7 @@ pub extern "C" fn call() {
         storage::add_contract_version(contract_package_hash, entry_points, named_keys);
 
     runtime::put_key("payment_contract", contract_hash.into());
-    
+
     // Added for the testing convinience.
     runtime::put_key(
         "payment_contract_hash",

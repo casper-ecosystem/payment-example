@@ -4,7 +4,7 @@ const CONTRACT_ROOT: &str = "../contract";
 const CONTRACT_CARGO_TOML: &str = "../contract/Cargo.toml";
 const CONTRACT_MAIN_RS: &str = "../contract/src/main.rs";
 const BUILD_ARGS: [&str; 2] = ["build", "--release"];
-const WASM_FILENAME: &str = "payment_contract.wasm";
+const WASM_FILENAME: &str = "wallet_contract.wasm";
 const ORIGINAL_WASM_DIR: &str = "../contract/target/wasm32-unknown-unknown/release";
 const NEW_WASM_DIR: &str = "wasm";
 

@@ -10,8 +10,8 @@ casper-contract = "1.1.1"
 casper-types = "1.1.1"
 
 [[bin]]
-name = "payment_contract"
-path = "src/payment_contract.rs"
+name = "wallet_contract"
+path = "src/wallet_contract.rs"
 bench = false
 doctest = false
 test = false

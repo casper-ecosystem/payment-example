@@ -6,7 +6,7 @@ build-contract:
 
 test-payment:
 	mkdir -p tests/wasm
-	cp contract/target/wasm32-unknown-unknown/release/payment_contract.wasm tests/wasm/
+	cp contract/target/wasm32-unknown-unknown/release/wallet_contract.wasm tests/wasm/
 	cp contract/target/wasm32-unknown-unknown/release/send_tokens.wasm tests/wasm/
 	cp contract/target/wasm32-unknown-unknown/release/collect.wasm tests/wasm/
 

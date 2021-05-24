@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use casper_engine_test_support::{Code, Hash, SessionBuilder, TestContext, TestContextBuilder};
+    use casper_types::ContractPackageHash;
+use casper_engine_test_support::{Code, Hash, SessionBuilder, TestContext, TestContextBuilder};
     use casper_types::{
         account::AccountHash, bytesrepr::FromBytes, runtime_args, CLTyped, PublicKey, RuntimeArgs,
         SecretKey, URef, U512,
@@ -10,6 +11,7 @@ mod tests {
     pub struct PaymentContract {
         pub context: TestContext,
         pub contract_hash: Hash,
+        pub package_hash: ContractPackageHash,
         pub admin_account: (PublicKey, AccountHash),
         pub participant_two: (PublicKey, AccountHash),
         pub participant_three: (PublicKey, AccountHash),
@@ -50,9 +52,22 @@ mod tests {
                 .into_t()
                 .unwrap_or_else(|_| panic!("payment_contract_hash has wrong type"));
 
+            let package_hash: ContractPackageHash = context
+                .query(
+                    admin_account_addr,
+                    &[
+                        "payment_contract".to_string(),
+                        "payment_contract_package".to_string(),
+                    ],
+                )
+                .unwrap()
+                .into_t()
+                .unwrap();
+
             Self {
                 context,
                 contract_hash,
+                package_hash,
                 admin_account: (admin_public_key, admin_account_addr),
                 participant_two: (participant_two_public_key, participant_two_account_addr),
                 participant_three: (participant_three_public_key, participant_three_account_addr),
@@ -124,7 +139,7 @@ mod tests {
             let code = Code::from("collect.wasm");
             // if we ask for as the amount than there is in the contract, we only collect what's in the contract.
             let args = runtime_args! {
-                "payment_contract" => self.contract_hash,
+                "payment_contract_package" => self.package_hash,
                 "recipient" => recipient,
                 "amount" => U512::from(100000000000000000u64)
             };

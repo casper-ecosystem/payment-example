@@ -139,7 +139,7 @@ pub extern "C" fn call() {
     entry_points.add_entry_point(EntryPoint::new(
         "collect",
         vec![
-            Parameter::new("amount", CLType::PublicKey),
+            Parameter::new("amount", CLType::U512),
             Parameter::new("purse", CLType::URef),
         ],
         CLType::Unit,
@@ -154,11 +154,14 @@ pub extern "C" fn call() {
         "contract_purse_wrapper".to_string(),
         storage::new_uref(purse).into(),
     );
+    named_keys.insert(
+        "payment_contract_package".to_string(),
+        storage::new_uref(contract_package_hash).into(),
+    );
     let (contract_hash, _) =
         storage::add_contract_version(contract_package_hash, entry_points, named_keys);
 
     runtime::put_key("payment_contract", contract_hash.into());
-
     runtime::put_key(
         "payment_contract_hash",
         storage::new_uref(contract_hash).into(),

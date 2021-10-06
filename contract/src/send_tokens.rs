@@ -1,11 +1,7 @@
-#![cfg_attr(
-    not(target_arch = "wasm32"),
-    crate_type = "target arch should be wasm32"
-)]
 #![no_main]
 
-use casper_types::ContractPackageHash;
 use casper_contract::contract_api::{account, runtime, system};
+use casper_types::ContractPackageHash;
 use casper_types::{runtime_args, RuntimeArgs, U512};
 
 #[no_mangle]

@@ -1,34 +1,31 @@
 prepare:
+	rustup default nightly-2021-06-17-x86_64-unknown-linux-gnu
 	rustup target add wasm32-unknown-unknown
 
-build-contract:
-	cd contract && cargo build --release --target wasm32-unknown-unknown
+rust-test-only:
+	cargo test -p tests
 
-test-payment:
-	mkdir -p tests/wasm
-	cp contract/target/wasm32-unknown-unknown/release/wallet_contract.wasm tests/wasm/
-	cp contract/target/wasm32-unknown-unknown/release/send_tokens.wasm tests/wasm/
-	cp contract/target/wasm32-unknown-unknown/release/collect.wasm tests/wasm/
+copy-wasm-file-to-test:
+	cp target/wasm32-unknown-unknown/release/*.wasm tests/wasm
 
-	cd tests && cargo test -- --nocapture
-
-test: build-contract test-payment
+test: build-contract copy-wasm-file-to-test rust-test-only
 
 clippy:
-	cd contract && cargo clippy --all-targets --all -- -D warnings -A renamed_and_removed_lints
-	cd tests && cargo clippy
+	cargo clippy --all-targets --all -- -D warnings
 
 check-lint: clippy
-	cd contract && cargo fmt --all -- --check
-
-lint: clippy
-	cd contract && cargo fmt --all
+	cargo fmt --all -- --check
 
 format:
-	cd contract && cargo fmt 
-	cd tests && cargo fmt
+	cargo fmt --all
+
+lint: clippy format
+
+build-contract:
+	cargo build --release -p payment_contract --target wasm32-unknown-unknown
+	wasm-strip target/wasm32-unknown-unknown/release/wallet_contract.wasm
+	wasm-strip target/wasm32-unknown-unknown/release/send_tokens.wasm
+	wasm-strip target/wasm32-unknown-unknown/release/collect.wasm
 
 clean:
-	cd contract && cargo clean
-	cd tests && cargo clean
-	rm tests/wasm/*.wasm
+	cargo clean

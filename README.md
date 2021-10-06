@@ -44,7 +44,7 @@ Each account on the network has its own default purse, creation of new purses in
 ```
 
 ## contract snippets:
-- transfer from caller account's purse to a purse that is the main purse of an outside account, from inside contract:
+- transfer from caller accounts purse to a purse that is the main purse of an outside account, from inside contract:
 ```
     let recipient: AccountHash = runtime::get_named_arg("recipient");
     let amount: U512 = runtime::get_named_arg("amount");
@@ -83,3 +83,14 @@ or the following for short to get caller account balance:
 ```
     system::create_purse()
 ```
+
+## Notes
+
+One thing is important to mention that not every purse action is available from anywhere.
+`transfer_from_purse_to_purse` is only possible when you caller have access rights to both purses.
+For example the main purse of an account. To and from this purse only session level contract contexts can make transfers.
+If you want to `transfer_from_purse_to_account` on the other hand, you need only have access right to one purse your transfer from.
+
+### Versions
+This example is on casper-types and casper-contract version 1.3.3
+rustc 1.56.0-nightly (2faabf579 2021-07-27)

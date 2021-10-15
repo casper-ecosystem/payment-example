@@ -1,13 +1,14 @@
 #![no_main]
+#![no_std]
 
 use casper_contract::contract_api::{account, runtime, system};
-use casper_types::ContractPackageHash;
 use casper_types::{runtime_args, RuntimeArgs, U512};
+use casper_types::{ContractPackageHash, Key};
 
 #[no_mangle]
 pub extern "C" fn call() {
     let payment_contract_hash: ContractPackageHash = runtime::get_named_arg("payment_contract");
-
+    let recipient: Key = runtime::get_named_arg("recipient");
     let transport_purse = system::create_purse();
     system::transfer_from_purse_to_purse(
         account::get_main_purse(),
@@ -22,6 +23,7 @@ pub extern "C" fn call() {
         None,
         "deposit",
         runtime_args! {
+            "recipient" => recipient,
             "purse" => transport_purse
         },
     );

@@ -1,9 +1,9 @@
 use casper_engine_test_support::{Code, Hash, SessionBuilder, TestContext, TestContextBuilder};
-use casper_types::ContractPackageHash;
 use casper_types::{
     account::AccountHash, bytesrepr::FromBytes, runtime_args, CLTyped, PublicKey, RuntimeArgs,
-    SecretKey, URef, U512,
+    SecretKey, U512,
 };
+use casper_types::{ContractPackageHash, Key};
 use std::convert::TryInto;
 
 pub struct PaymentContract {
@@ -115,7 +115,7 @@ impl PaymentContract {
         }
     }
 
-    fn _call(&mut self, caller: AccountHash, method: &str, args: RuntimeArgs) {
+    fn call(&mut self, caller: AccountHash, method: &str, args: RuntimeArgs) {
         let code = Code::Hash(self.contract_hash, method.to_string());
         let session = SessionBuilder::new(code, args)
             .with_address(caller)
@@ -124,23 +124,10 @@ impl PaymentContract {
         self.context.run(session);
     }
 
-    pub fn send_tokens(&mut self, sender: AccountHash) {
+    pub fn send_tokens(&mut self, sender: AccountHash, recipient: Key) {
         let code = Code::from("send_tokens.wasm");
         let args = runtime_args! {
-            "payment_contract" => self.package_hash
-        };
-        let session = SessionBuilder::new(code, args)
-            .with_address(sender)
-            .with_authorization_keys(&[sender])
-            .build();
-        self.context.run(session);
-    }
-
-    pub fn collect(&mut self, sender: AccountHash, recipient: AccountHash) {
-        let code = Code::from("collect.wasm");
-        // if we ask for as the amount than there is in the contract, we only collect what's in the contract.
-        let args = runtime_args! {
-            "payment_contract_package" => self.package_hash,
+            "payment_contract" => self.package_hash,
             "recipient" => recipient,
         };
         let session = SessionBuilder::new(code, args)
@@ -150,20 +137,8 @@ impl PaymentContract {
         self.context.run(session);
     }
 
-    pub fn get_contract_balance(&self) -> U512 {
-        let contract_purse: URef = self
-            .context
-            .query(
-                self.admin_account.1,
-                &[
-                    "payment_contract".to_string(),
-                    "contract_purse_wrapper".to_string(),
-                ],
-            )
-            .unwrap()
-            .into_t()
-            .unwrap();
-        self.context.get_balance(contract_purse.addr())
+    pub fn collect(&mut self, recipient: AccountHash) {
+        self.call(recipient, "collect", runtime_args! {});
     }
 }
 
@@ -175,74 +150,39 @@ fn test_payment() {
     // Print the balance of all 3 users
 
     let account_balances = context.get_all_accounts_balance();
-    let contract_balance = context.get_contract_balance();
     assert_eq!(account_balances.0, U512::from(499998500000000000_u64));
     assert_eq!(account_balances.1, U512::from(500000000000000000_u64));
     assert_eq!(account_balances.2, U512::from(500000000000000000_u64));
-    assert_eq!(contract_balance, U512::from(0_u64));
 
     // send tokens from admin to contract
-    context.send_tokens(context.admin_account.1);
-
+    context.send_tokens(
+        context.admin_account.1,
+        Key::Account(context.participant_three.1),
+    );
     // look at balances again
-
     let account_balances = context.get_all_accounts_balance();
-    let contract_balance = context.get_contract_balance();
     assert_eq!(account_balances.0, U512::from(399997000000000000_u64));
     assert_eq!(account_balances.1, U512::from(500000000000000000_u64));
     assert_eq!(account_balances.2, U512::from(500000000000000000_u64));
-    assert_eq!(contract_balance, U512::from(100000000000000000_u64));
 
     // collect token to a third account
-    context.collect(context.admin_account.1, context.participant_three.1);
+    context.collect(context.participant_three.1);
 
     // tokens are retrieved
 
     let account_balances = context.get_all_accounts_balance();
-    let contract_balance = context.get_contract_balance();
     assert_eq!(account_balances.0, U512::from(399995500000000000_u64));
     assert_eq!(account_balances.1, U512::from(500000000000000000_u64));
     assert_eq!(account_balances.2, U512::from(600000000000000000_u64));
-    assert_eq!(contract_balance, U512::from(0_u64));
 
     // another user tries to send tokens to the contract
-    context.send_tokens(context.participant_three.1);
+    context.send_tokens(
+        context.participant_three.1,
+        Key::Account(context.admin_account.1),
+    );
 
     let account_balances = context.get_all_accounts_balance();
-    let contract_balance = context.get_contract_balance();
     assert_eq!(account_balances.0, U512::from(399995500000000000_u64));
     assert_eq!(account_balances.1, U512::from(500000000000000000_u64));
     assert_eq!(account_balances.2, U512::from(499998500000000000_u64));
-    assert_eq!(contract_balance, U512::from(100000000000000000_u64));
-}
-
-#[test]
-#[should_panic = "InvalidContext"]
-fn unauth_third_party_collect() {
-    // Setup example contract context
-    let mut context = PaymentContract::deploy();
-
-    // Print the balance of all 3 users
-    let account_balances = context.get_all_accounts_balance();
-    let contract_balance = context.get_contract_balance();
-    assert_eq!(account_balances.0, U512::from(499998500000000000_u64));
-    assert_eq!(account_balances.1, U512::from(500000000000000000_u64));
-    assert_eq!(account_balances.2, U512::from(500000000000000000_u64));
-    assert_eq!(contract_balance, U512::from(0_u64));
-
-    // send tokens from admin to contract
-    context.send_tokens(context.admin_account.1);
-
-    // look at balances again
-    let account_balances = context.get_all_accounts_balance();
-    let contract_balance = context.get_contract_balance();
-    assert_eq!(account_balances.0, U512::from(399997000000000000_u64));
-    assert_eq!(account_balances.1, U512::from(500000000000000000_u64));
-    assert_eq!(account_balances.2, U512::from(500000000000000000_u64));
-    assert_eq!(contract_balance, U512::from(100000000000000000_u64));
-
-    // this next should fail, because participant_two does not have the authority to collect tokens
-    context.collect(context.participant_two.1, context.participant_two.1);
-    let contract_balance = context.get_contract_balance();
-    assert_eq!(contract_balance, U512::from(0_u64));
 }

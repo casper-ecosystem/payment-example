@@ -1,41 +1,42 @@
 #![no_main]
+#![no_std]
 
+extern crate alloc;
+
+use alloc::string::ToString;
+use alloc::vec;
 use casper_contract::{
-    contract_api::{runtime, storage, system},
+    contract_api::{
+        runtime::{self, call_versioned_contract, get_caller},
+        storage::{self, dictionary_get, dictionary_put, new_dictionary},
+        system::{self, get_purse_balance},
+    },
     unwrap_or_revert::UnwrapOrRevert,
 };
-use casper_types::Group;
-use casper_types::{account::AccountHash, CLTyped, CLValue};
 use casper_types::{
-    contracts::NamedKeys, CLType, EntryPoint, EntryPointAccess, EntryPointType, EntryPoints,
-    Parameter, URef, U512,
+    account::AccountHash, contracts::NamedKeys, runtime_args, CLType, CLTyped, EntryPoint,
+    EntryPointAccess, EntryPointType, EntryPoints, Key, Parameter, RuntimeArgs, URef,
 };
+
+#[no_mangle]
+pub extern "C" fn init() {
+    new_dictionary("escrow").unwrap_or_revert();
+}
 
 #[no_mangle]
 pub extern "C" fn deposit() {
     let purse: URef = runtime::get_named_arg("purse");
-    let amount: U512 = system::get_purse_balance(purse).unwrap();
-    let contract_purse: URef = runtime::get_key("contract_purse")
-        .unwrap()
-        .into_uref()
-        .unwrap();
-    system::transfer_from_purse_to_purse(purse, contract_purse, amount, None).unwrap();
+    let recipient: Key = runtime::get_named_arg("recipient");
+    store_escrow_purse(recipient, purse);
 }
 
 #[no_mangle]
 pub extern "C" fn collect() {
-    // send all tokens from "contract_purse" to given account;
-    let recipient: AccountHash = runtime::get_named_arg("recipient");
-
-    let contract_purse: URef = runtime::get_key("contract_purse")
-        .unwrap()
-        .into_uref()
-        .unwrap();
-    let contract_balance = system::get_purse_balance(contract_purse).unwrap_or_revert();
-
-    system::transfer_from_purse_to_account(contract_purse, recipient, contract_balance, None)
-        .unwrap();
-    runtime::ret(CLValue::from_t(contract_balance).unwrap_or_revert());
+    let recipient = get_caller();
+    let escrow_purse = get_escrow_purse(Key::Account(recipient));
+    let escrow_balance = get_purse_balance(escrow_purse).unwrap_or_revert();
+    system::transfer_from_purse_to_account(escrow_purse, recipient, escrow_balance, None)
+        .unwrap_or_revert();
 }
 
 #[no_mangle]
@@ -53,6 +54,15 @@ pub extern "C" fn call() {
     runtime::put_key("group_uref", admin_group[0].into());
 
     let mut entry_points = EntryPoints::new();
+
+    entry_points.add_entry_point(EntryPoint::new(
+        "init",
+        vec![],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Contract,
+    ));
+
     entry_points.add_entry_point(EntryPoint::new(
         "deposit",
         vec![Parameter::new("purse", CLType::URef)],
@@ -65,7 +75,7 @@ pub extern "C" fn call() {
         "collect",
         vec![Parameter::new("recipient", AccountHash::cl_type())],
         CLType::Unit,
-        EntryPointAccess::Groups(vec![Group::new("group_label")]),
+        EntryPointAccess::Public,
         EntryPointType::Contract,
     ));
 
@@ -92,4 +102,27 @@ pub extern "C" fn call() {
         "payment_contract_hash",
         storage::new_uref(contract_hash).into(),
     );
+
+    call_versioned_contract(contract_package_hash, None, "init", runtime_args! {})
+}
+
+fn get_escrow_purse(key: Key) -> URef {
+    let dict_key = runtime::get_key("escrow").unwrap_or_revert();
+    let dict_uref = dict_key.into_uref().unwrap_or_revert();
+    dictionary_get(
+        dict_uref,
+        &key.into_account().unwrap_or_revert().to_string(),
+    )
+    .unwrap_or_revert()
+    .unwrap_or_revert()
+}
+
+fn store_escrow_purse(key: Key, purse: URef) {
+    let dict_key = runtime::get_key("escrow").unwrap_or_revert();
+    let dict_uref = dict_key.into_uref().unwrap_or_revert();
+    dictionary_put(
+        dict_uref,
+        &key.into_account().unwrap_or_revert().to_string(),
+        purse,
+    )
 }

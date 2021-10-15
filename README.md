@@ -1,3 +1,7 @@
+
+# TODO rework
+
+
 # Payment Contract Example
 
 This example demonstrates the effective methods of transferring motes. Motes are contained inside purses.
@@ -92,5 +96,5 @@ For example the main purse of an account. To and from this purse only session le
 If you want to `transfer_from_purse_to_account` on the other hand, you need only have access right to one purse your transfer from.
 
 ### Versions
-This example is on casper-types and casper-contract version 1.3.3
+This example is on casper-types and casper-contract version 1.3.4
 rustc 1.56.0-nightly (2faabf579 2021-07-27)

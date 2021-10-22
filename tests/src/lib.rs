@@ -101,7 +101,7 @@ impl PaymentContract {
     pub fn deposit(&mut self, sender: AccountHash, recipient: Key) {
         let code = Code::from("deposit.wasm");
         let args = runtime_args! {
-            "escrow_contract" => self.package_hash,
+            "escrow_contract_package" => self.package_hash,
             "recipient" => recipient,
         };
         let session = SessionBuilder::new(code, args)
@@ -178,7 +178,7 @@ fn test_multiple_payment_and_single_collect() {
 
     // Participant Three collects their money
     context.collect(context.participant_three.1);
-    
+
     let account_balances = context.get_all_accounts_balance();
     assert_eq!(account_balances.0, U512::from(399997000000000000_u64));
     assert_eq!(account_balances.1, U512::from(399998500000000000_u64));

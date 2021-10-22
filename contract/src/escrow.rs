@@ -18,10 +18,13 @@ use casper_types::{
     EntryPointType, EntryPoints, Key, Parameter, URef,
 };
 
+mod constants;
+use constants::{DEPOSIT, DEPOSIT_PURSE, DEPOSIT_RECIPIENT, _COLLECT};
+
 #[no_mangle]
 pub extern "C" fn deposit() {
-    let incoming_purse: URef = runtime::get_named_arg("purse");
-    let recipient: Key = runtime::get_named_arg("recipient");
+    let incoming_purse: URef = runtime::get_named_arg(DEPOSIT_PURSE);
+    let recipient: Key = runtime::get_named_arg(DEPOSIT_RECIPIENT);
     let stored_purse = get_escrow_purse(recipient.into_account().unwrap_or_revert());
     transfer_from_purse_to_purse(
         incoming_purse,
@@ -48,16 +51,19 @@ pub extern "C" fn call() {
     let mut entry_points = EntryPoints::new();
 
     entry_points.add_entry_point(EntryPoint::new(
-        "deposit",
-        vec![Parameter::new("purse", CLType::URef)],
+        DEPOSIT,
+        vec![
+            Parameter::new(DEPOSIT_PURSE, URef::cl_type()),
+            Parameter::new(DEPOSIT_RECIPIENT, Key::cl_type()),
+        ],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,
     ));
 
     entry_points.add_entry_point(EntryPoint::new(
-        "collect",
-        vec![Parameter::new("recipient", AccountHash::cl_type())],
+        _COLLECT,
+        vec![],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,

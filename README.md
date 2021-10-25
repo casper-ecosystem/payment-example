@@ -83,5 +83,5 @@ system::create_purse()
     - purse_addr: `3742e6011967754e97d28b35be8d915159db7b05370f802e79c9d4507f075e04`
 
 ### Versions
-This example is on casper-types and casper-contract version 1.3.4
-rustc 1.56.0-nightly (2faabf579 2021-07-27)
+This example is on casper-types and casper-contract version 1.4.1
+rustc 1.58.0-nightly (00d5e42e7 2021-10-24)

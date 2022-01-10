@@ -1,37 +1,28 @@
 [package]
-name = "payment_contract"
+name = "escrow_contract"
 version = "0.1.0"
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-casper-contract = "1.3.3"
-casper-types = "1.3.3"
+casper-contract = "1.4.1"
+casper-types = "1.4.1"
 
 [[bin]]
-name = "wallet_contract"
-path = "src/wallet_contract.rs"
+name = "escrow"
+path = "src/escrow.rs"
 bench = false
 doctest = false
 test = false
 
 [[bin]]
-name = "send_tokens"
-path = "src/send_tokens.rs"
-bench = false
-doctest = false
-test = false
-
-[[bin]]
-name = "collect"
-path = "src/collect.rs"
+name = "deposit"
+path = "src/deposit.rs"
 bench = false
 doctest = false
 test = false
 
 [features]
-default = ["casper-contract/std", "casper-types/std", "casper-contract/test-support"]
-
-[profile.release]
-lto = true
+default = ["std"]
+std = ["casper-contract/std", "casper-types/std"]

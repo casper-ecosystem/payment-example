@@ -124,11 +124,12 @@ impl PaymentContract {
     /// Calls the additional "deposit" contract with Key::Account(recipient) and the hash of the escrow contract,
     /// that creates a purse and transfers 100000000000000000 motes into it,
     /// then transfers said purse to the escrow contract.
-    pub fn deposit(&mut self, sender: AccountHash, recipient: Key) {
+    pub fn deposit(&mut self, sender: AccountHash, recipient: Key, amount: U512) {
         let code = PathBuf::from("deposit.wasm");
         let args = runtime_args! {
             "escrow_contract_package" => self.package_hash,
             "recipient" => recipient,
+            "amount" => amount
         };
         deploy(
             &mut self.builder,
@@ -143,7 +144,11 @@ impl PaymentContract {
     /// Function that calls the `collect` endpoint on the escrow contract,
     /// that directly transfers the amount in the purse stored to the accounts hash to the account.
     pub fn collect(&mut self, recipient: AccountHash) {
-        self.call(recipient, "collect", runtime_args! {});
+        self.call(
+            recipient,
+            "collect",
+            runtime_args! {"amount" => Option::<U512>::None},
+        );
     }
 }
 
@@ -162,6 +167,7 @@ fn test_payment_and_collect() {
     context.deposit(
         context.admin_account.1,
         Key::Account(context.participant_three.1),
+        U512::from(10000000000000u64),
     );
 
     // look at balances again, admins money should be down by a deposited 10000000000000,
@@ -193,11 +199,13 @@ fn test_multiple_payment_and_single_collect() {
     context.deposit(
         context.admin_account.1,
         Key::Account(context.participant_three.1),
+        U512::from(10000000000000u64),
     );
 
     context.deposit(
         context.participant_two.1,
         Key::Account(context.participant_three.1),
+        U512::from(10000000000000u64),
     );
 
     let account_balances = context.get_all_accounts_balance();

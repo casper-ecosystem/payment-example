@@ -14,13 +14,17 @@ use casper_contract::{
     unwrap_or_revert::UnwrapOrRevert,
 };
 use casper_types::{
-    contracts::NamedKeys, ApiError, CLType, CLTyped, EntryPoint, EntryPointAccess, EntryPointType,
-    EntryPoints, Key, Parameter, URef, U512,
+    ApiError, CLType, CLTyped, EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Key,
+    Parameter, URef, U512,
 };
 
 mod constants;
 use constants::{AMOUNT, COLLECT, DEPOSIT, DEPOSIT_PURSE, DEPOSIT_RECIPIENT};
 
+// When depositing the contract checks if the recipient had a deposit purse stored previously.
+// If not creates a new purse inside the contract for them (purse creation costs 2,5 cspr).
+// Then the amount is transfered into the purse that is stored in the contract.
+// Creating a purse in this process is a one time per user cost, since the purses are stored.
 #[no_mangle]
 pub extern "C" fn deposit() {
     let incoming_purse: URef = runtime::get_named_arg(DEPOSIT_PURSE);
@@ -43,14 +47,16 @@ pub extern "C" fn deposit() {
     );
 }
 
+// The `collect` entry_point checks whether there have been a deposit for the caller. If not then the call reverts with User(1) error.
+// If a deposit purse is found, the desired amount (if contained within the purse) will be transfered directly to the callers account.
 #[no_mangle]
 pub extern "C" fn collect() {
     let recipient = get_caller();
-    let amount_u512: Option<U512> = runtime::get_named_arg(AMOUNT);
     let escrow_purse = match runtime::get_key(&recipient.to_string()) {
         Some(purse_uref_key) => purse_uref_key.into_uref().unwrap_or_revert(),
         None => runtime::revert(ApiError::User(1)),
     };
+    let amount_u512: Option<U512> = runtime::get_named_arg(AMOUNT);
     let transfer_amount = match amount_u512 {
         Some(amount) => amount,
         None => get_purse_balance(escrow_purse).unwrap_or_revert(),
@@ -61,7 +67,6 @@ pub extern "C" fn collect() {
 
 #[no_mangle]
 pub extern "C" fn call() {
-    let (contract_package_hash, _access_uref) = storage::create_contract_package_at_hash();
     let mut entry_points = EntryPoints::new();
 
     entry_points.add_entry_point(EntryPoint::new(
@@ -84,21 +89,12 @@ pub extern "C" fn call() {
         EntryPointType::Contract,
     ));
 
-    let mut named_keys = NamedKeys::new();
-    let purse = system::create_purse();
-    named_keys.insert("contract_purse".to_string(), purse.into());
-
-    // Added for the testing convinience.
-    named_keys.insert(
-        "contract_purse_wrapper".to_string(),
-        storage::new_uref(purse).into(),
+    let (contract_hash, _version) = storage::new_contract(
+        entry_points,
+        None,
+        Some("escrow_contract_package".to_string()),
+        Some("escrow_contract_access_token".to_string()),
     );
-    named_keys.insert(
-        "escrow_contract_package".to_string(),
-        storage::new_uref(contract_package_hash).into(),
-    );
-    let (contract_hash, _) =
-        storage::add_contract_version(contract_package_hash, entry_points, named_keys);
 
     runtime::put_key("escrow_contract", contract_hash.into());
 

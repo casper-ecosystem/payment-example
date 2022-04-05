@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use casper_engine_test_support::{InMemoryWasmTestBuilder, DEFAULT_RUN_GENESIS_REQUEST};
 
 use casper_types::{account::AccountHash, runtime_args, PublicKey, RuntimeArgs, SecretKey, U512};
-use casper_types::{ContractHash, ContractPackageHash, Key};
+use casper_types::{ContractHash, Key};
 use utils::{deploy, fund_account, query, DeploySource};
 
 mod utils;
@@ -11,7 +11,6 @@ mod utils;
 pub struct PaymentContract {
     pub builder: InMemoryWasmTestBuilder,
     pub contract_hash: ContractHash,
-    pub package_hash: ContractPackageHash,
     pub admin_account: (PublicKey, AccountHash),
     pub participant_two: (PublicKey, AccountHash),
     pub participant_three: (PublicKey, AccountHash),
@@ -64,19 +63,9 @@ impl PaymentContract {
             &["escrow_contract_hash".to_string()],
         );
 
-        let package_hash: ContractPackageHash = query(
-            &builder,
-            Key::Account(admin_account_addr),
-            &[
-                "escrow_contract".to_string(),
-                "escrow_contract_package".to_string(),
-            ],
-        );
-
         Self {
             builder,
             contract_hash,
-            package_hash,
             admin_account: (admin_public_key, admin_account_addr),
             participant_two: (participant_two_public_key, participant_two_account_addr),
             participant_three: (participant_three_public_key, participant_three_account_addr),
@@ -102,17 +91,11 @@ impl PaymentContract {
 
     /// Function that handles the creation and running of sessions.
     fn call(&mut self, caller: AccountHash, method: &str, args: RuntimeArgs) {
-        // let code = Code::Hash(self.contract_hash, method.to_string());
-        // let session = SessionBuilder::new(code, args)
-        //     .with_address(caller)
-        //     .with_authorization_keys(&[caller])
-        //     .build();
-        // self.context.run(session);
         deploy(
             &mut self.builder,
             &caller,
-            &DeploySource::ByPackageHash {
-                package_hash: self.package_hash,
+            &DeploySource::ByContractHash {
+                hash: self.contract_hash,
                 method: method.to_string(),
             },
             args,
@@ -127,7 +110,7 @@ impl PaymentContract {
     pub fn deposit(&mut self, sender: AccountHash, recipient: Key, amount: U512) {
         let code = PathBuf::from("deposit.wasm");
         let args = runtime_args! {
-            "escrow_contract_package" => self.package_hash,
+            "escrow_contract_hash" => self.contract_hash,
             "recipient" => recipient,
             "amount" => amount
         };

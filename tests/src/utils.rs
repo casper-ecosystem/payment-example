@@ -54,6 +54,10 @@ pub enum DeploySource {
         package_hash: ContractPackageHash,
         method: String,
     },
+    ByContractName {
+        name: String,
+        method: String,
+    },
 }
 
 pub fn deploy(
@@ -86,6 +90,9 @@ pub fn deploy(
             method,
             args,
         ),
+        DeploySource::ByContractName { name, method } => {
+            deploy_builder.with_stored_session_named_key(name, method, args)
+        }
     };
 
     let mut execute_request_builder =

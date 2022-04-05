@@ -3,18 +3,19 @@
 
 use casper_contract::contract_api::{account, runtime, system};
 use casper_contract::unwrap_or_revert::UnwrapOrRevert;
-use casper_types::{runtime_args, RuntimeArgs};
-use casper_types::{ContractPackageHash, Key};
+use casper_types::Key;
+use casper_types::{runtime_args, ContractHash, RuntimeArgs};
 mod constants;
 use constants::{AMOUNT, DEPOSIT, DEPOSIT_PURSE, DEPOSIT_RECIPIENT};
 
 // Session code that executes in the callers context.
 // This code will try to get a purse stored under "my_escrow_purse", if not found it will create a new purse.
-
+// Session code NEEDS an argument called `amount`,
+// which is used as a limit to how many motes can be extracted from the `main_purse` of the user.
+// It might be important for you to reuse purses as their creation costs 2,5 CSPR.
 #[no_mangle]
 pub extern "C" fn call() {
-    let escrow_contract_hash: ContractPackageHash =
-        runtime::get_named_arg("escrow_contract_package");
+    let escrow_contract_hash: ContractHash = runtime::get_named_arg("escrow_contract_hash");
     let recipient: Key = runtime::get_named_arg(DEPOSIT_RECIPIENT);
     let transport_purse = match runtime::get_key("my_escrow_purse") {
         Some(purse_key) => purse_key.into_uref().unwrap_or_revert(),
@@ -33,9 +34,8 @@ pub extern "C" fn call() {
     )
     .unwrap_or_revert();
 
-    let _: () = runtime::call_versioned_contract(
+    let _: () = runtime::call_contract(
         escrow_contract_hash,
-        None,
         DEPOSIT,
         runtime_args! {
             DEPOSIT_RECIPIENT => recipient,

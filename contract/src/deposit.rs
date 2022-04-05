@@ -2,6 +2,7 @@
 #![no_std]
 
 use casper_contract::contract_api::{account, runtime, system};
+use casper_contract::unwrap_or_revert::UnwrapOrRevert;
 use casper_types::{runtime_args, RuntimeArgs, U512};
 use casper_types::{ContractPackageHash, Key};
 mod constants;
@@ -15,10 +16,10 @@ pub extern "C" fn call() {
     system::transfer_from_purse_to_purse(
         account::get_main_purse(),
         transport_purse,
-        U512::from(100000000000000000u128),
+        U512::from(10000000000000u128),
         None,
     )
-    .unwrap();
+    .unwrap_or_revert();
 
     let _: () = runtime::call_versioned_contract(
         escrow_contract_hash,

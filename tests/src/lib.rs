@@ -104,11 +104,28 @@ impl PaymentContract {
         );
     }
 
-    /// Calls the additional "deposit" contract with Key::Account(recipient) and the hash of the escrow contract,
-    /// that creates a purse and transfers 100000000000000000 motes into it,
+    /// Calls the additional "deposit" contract with recipient and the hash of the escrow contract,
+    /// that creates a purse and transfers 100000000000000 motes into it,
     /// then transfers said purse to the escrow contract.
     pub fn deposit(&mut self, sender: AccountHash, recipient: Key, amount: U512) {
         let code = PathBuf::from("deposit.wasm");
+        let args = runtime_args! {
+            "escrow_contract_hash" => self.contract_hash,
+            "recipient" => recipient,
+            "amount" => amount
+        };
+        deploy(
+            &mut self.builder,
+            &sender,
+            &DeploySource::Code(code),
+            args,
+            true,
+            None,
+        );
+    }
+
+    pub fn deposit_into(&mut self, sender: AccountHash, recipient: Key, amount: U512) {
+        let code = PathBuf::from("deposit_into.wasm");
         let args = runtime_args! {
             "escrow_contract_hash" => self.contract_hash,
             "recipient" => recipient,
@@ -186,6 +203,44 @@ fn test_multiple_payment_and_single_collect() {
     );
 
     context.deposit(
+        context.participant_two.1,
+        Key::Account(context.participant_three.1),
+        U512::from(10000000000000u64),
+    );
+
+    let account_balances = context.get_all_accounts_balance();
+    assert_eq!(account_balances.0, U512::from(37000000000000_u64));
+    assert_eq!(account_balances.1, U512::from(38500000000000_u64));
+    assert_eq!(account_balances.2, U512::from(50000000000000_u64));
+
+    // Participant Three collects their money
+    context.collect(context.participant_three.1);
+
+    let account_balances = context.get_all_accounts_balance();
+    assert_eq!(account_balances.0, U512::from(37000000000000_u64));
+    assert_eq!(account_balances.1, U512::from(38500000000000_u64));
+    assert_eq!(account_balances.2, U512::from(68500000000000_u64));
+}
+
+#[test]
+fn test_multiple_payment_and_single_collect_deposit_into() {
+    // Setup example contract context
+    let mut context = PaymentContract::deploy();
+
+    // Default state (after deployment)
+    let account_balances = context.get_all_accounts_balance();
+    assert_eq!(account_balances.0, U512::from(48500000000000_u64));
+    assert_eq!(account_balances.1, U512::from(50000000000000_u64));
+    assert_eq!(account_balances.2, U512::from(50000000000000_u64));
+
+    // Admin and Participant Two deposits money for Participant Three
+    context.deposit_into(
+        context.admin_account.1,
+        Key::Account(context.participant_three.1),
+        U512::from(10000000000000u64),
+    );
+
+    context.deposit_into(
         context.participant_two.1,
         Key::Account(context.participant_three.1),
         U512::from(10000000000000u64),

@@ -22,3 +22,10 @@ path = "src/deposit.rs"
 bench = false
 doctest = false
 test = false
+
+[[bin]]
+name = "deposit_into"
+path = "src/deposit_into.rs"
+bench = false
+doctest = false
+test = false

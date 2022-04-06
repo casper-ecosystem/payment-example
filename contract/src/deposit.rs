@@ -6,7 +6,10 @@ use casper_contract::unwrap_or_revert::UnwrapOrRevert;
 use casper_types::Key;
 use casper_types::{runtime_args, ContractHash, RuntimeArgs};
 mod constants;
-use constants::{AMOUNT, DEPOSIT, DEPOSIT_PURSE, DEPOSIT_RECIPIENT};
+use constants::{AMOUNT, DEPOSIT, DEPOSIT_PURSE, DEPOSIT_RECIPIENT, ESCROW_CONTRACT_HASH};
+
+// This constant can be replaced easily with a named argument in the session code.
+pub const MY_ESCROW_PURSE: &str = "my_escrow_purse";
 
 // Session code that executes in the callers context.
 // This code will try to get a purse stored under "my_escrow_purse", if not found it will create a new purse.
@@ -15,13 +18,13 @@ use constants::{AMOUNT, DEPOSIT, DEPOSIT_PURSE, DEPOSIT_RECIPIENT};
 // It might be important for you to reuse purses as their creation costs 2,5 CSPR.
 #[no_mangle]
 pub extern "C" fn call() {
-    let escrow_contract_hash: ContractHash = runtime::get_named_arg("escrow_contract_hash");
+    let escrow_contract_hash: ContractHash = runtime::get_named_arg(ESCROW_CONTRACT_HASH);
     let recipient: Key = runtime::get_named_arg(DEPOSIT_RECIPIENT);
-    let transport_purse = match runtime::get_key("my_escrow_purse") {
+    let transport_purse = match runtime::get_key(MY_ESCROW_PURSE) {
         Some(purse_key) => purse_key.into_uref().unwrap_or_revert(),
         None => {
             let new_purse = system::create_purse();
-            runtime::put_key("my_escrow_purse", new_purse.into());
+            runtime::put_key(MY_ESCROW_PURSE, new_purse.into());
             new_purse
         }
     };

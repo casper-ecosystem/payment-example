@@ -14,12 +14,12 @@ use casper_contract::{
     unwrap_or_revert::UnwrapOrRevert,
 };
 use casper_types::{
-    ApiError, CLType, CLTyped, EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Key,
-    Parameter, URef, U512,
+    ApiError, CLType, CLTyped, CLValue, EntryPoint, EntryPointAccess, EntryPointType, EntryPoints,
+    Key, Parameter, URef, U512,
 };
 
 mod constants;
-use constants::{AMOUNT, COLLECT, DEPOSIT, DEPOSIT_PURSE, DEPOSIT_RECIPIENT};
+use constants::{AMOUNT, COLLECT, DEPOSIT, DEPOSIT_PURSE, DEPOSIT_RECIPIENT, GET_DEPOSIT_PURSE};
 
 // When depositing the contract checks if the recipient had a deposit purse stored previously.
 // If not creates a new purse inside the contract for them (purse creation costs 2,5 cspr).
@@ -33,7 +33,14 @@ pub extern "C" fn deposit() {
     let stored_purse =
         match runtime::get_key(&recipient.into_account().unwrap_or_revert().to_string()) {
             Some(purse_uref_key) => purse_uref_key.into_uref().unwrap_or_revert(),
-            None => create_purse(),
+            None => {
+                let new_purse = create_purse();
+                runtime::put_key(
+                    &recipient.into_account().unwrap_or_revert().to_string(),
+                    new_purse.into(),
+                );
+                new_purse
+            }
         };
     let transfer_amount = match amount_u512 {
         Some(amount) => amount,
@@ -41,10 +48,28 @@ pub extern "C" fn deposit() {
     };
     transfer_from_purse_to_purse(incoming_purse, stored_purse, transfer_amount, None)
         .unwrap_or_revert();
-    runtime::put_key(
-        &recipient.into_account().unwrap_or_revert().to_string(),
-        stored_purse.into(),
-    );
+}
+
+// A possible design choice to decrease the amount of purses created is to pass out a URef to a purse for the
+// the other side to deposit into. In this case you would want to limit the access rights for the purse
+// to ADD, or depending on the use case ADD and READ, so the caller can only read the balance,
+// and make the deposit into the purse.
+#[no_mangle]
+pub extern "C" fn get_deposit_purse() {
+    let recipient: Key = runtime::get_named_arg(DEPOSIT_RECIPIENT);
+    let stored_purse =
+        match runtime::get_key(&recipient.into_account().unwrap_or_revert().to_string()) {
+            Some(purse_uref_key) => purse_uref_key.into_uref().unwrap_or_revert(),
+            None => {
+                let new_purse = create_purse();
+                runtime::put_key(
+                    &recipient.into_account().unwrap_or_revert().to_string(),
+                    new_purse.into(),
+                );
+                new_purse
+            }
+        };
+    runtime::ret(CLValue::from_t(stored_purse.into_add()).unwrap_or_revert());
 }
 
 // The `collect` entry_point checks whether there have been a deposit for the caller. If not then the call reverts with User(1) error.
@@ -85,6 +110,14 @@ pub extern "C" fn call() {
         COLLECT,
         vec![Parameter::new(AMOUNT, Option::<U512>::cl_type())],
         CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Contract,
+    ));
+
+    entry_points.add_entry_point(EntryPoint::new(
+        GET_DEPOSIT_PURSE,
+        vec![Parameter::new(DEPOSIT_RECIPIENT, Key::cl_type())],
+        CLType::URef,
         EntryPointAccess::Public,
         EntryPointType::Contract,
     ));

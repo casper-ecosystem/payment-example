@@ -48,15 +48,15 @@ pub enum DeploySource {
     Code(PathBuf),
     ByContractHash {
         hash: ContractHash,
-        method: String,
+        entry_point: String,
     },
     ByPackageHash {
         package_hash: ContractPackageHash,
-        method: String,
+        entry_point: String,
     },
     ByContractName {
         name: String,
-        method: String,
+        entry_point: String,
     },
 }
 
@@ -78,20 +78,20 @@ pub fn deploy(
 
     deploy_builder = match source {
         DeploySource::Code(path) => deploy_builder.with_session_code(path, args),
-        DeploySource::ByContractHash { hash, method } => {
-            deploy_builder.with_stored_session_hash(*hash, method, args)
+        DeploySource::ByContractHash { hash, entry_point } => {
+            deploy_builder.with_stored_session_hash(*hash, entry_point, args)
         }
         DeploySource::ByPackageHash {
             package_hash,
-            method,
+            entry_point,
         } => deploy_builder.with_stored_versioned_contract_by_hash(
             package_hash.value(),
             None,
-            method,
+            entry_point,
             args,
         ),
-        DeploySource::ByContractName { name, method } => {
-            deploy_builder.with_stored_session_named_key(name, method, args)
+        DeploySource::ByContractName { name, entry_point } => {
+            deploy_builder.with_stored_session_named_key(name, entry_point, args)
         }
     };
 

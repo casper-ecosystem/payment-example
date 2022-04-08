@@ -11,64 +11,65 @@ mod utils;
 pub struct PaymentContract {
     pub builder: InMemoryWasmTestBuilder,
     pub contract_hash: ContractHash,
-    pub admin_account: (PublicKey, AccountHash),
-    pub participant_two: (PublicKey, AccountHash),
-    pub participant_three: (PublicKey, AccountHash),
+    pub alice_account: AccountHash,
+    pub bob_account: AccountHash,
+    pub charlie_account: AccountHash,
 }
 
 impl PaymentContract {
     pub fn deploy() -> Self {
-        // We create 3 users. One to oversee and deploy the contract, one to send the payment
-        // and one to receive it.
-        let admin_public_key: PublicKey =
+        // We create 3 accounts. "alice" will be the one who installs the contract.
+        let alice_public_key: PublicKey =
             PublicKey::from(&SecretKey::ed25519_from_bytes([1u8; 32]).unwrap());
-        let participant_two_public_key: PublicKey =
+        let bob_public_key: PublicKey =
             PublicKey::from(&SecretKey::ed25519_from_bytes([2u8; 32]).unwrap());
-        let participant_three_public_key: PublicKey =
+        let charlie_public_key: PublicKey =
             PublicKey::from(&SecretKey::ed25519_from_bytes([3u8; 32]).unwrap());
-        // Get addresses for participating users.
-        let admin_account_addr = AccountHash::from(&admin_public_key);
-        let participant_two_account_addr = AccountHash::from(&participant_two_public_key);
-        let participant_three_account_addr = AccountHash::from(&participant_three_public_key);
+        // Get addresses for participating accounts.
+        let alice_account = AccountHash::from(&alice_public_key);
+        let bob_account = AccountHash::from(&bob_public_key);
+        let charlie_account = AccountHash::from(&charlie_public_key);
 
+        // Set up the test framework and fund accounts
         let mut builder = InMemoryWasmTestBuilder::default();
         builder.run_genesis(&DEFAULT_RUN_GENESIS_REQUEST).commit();
         builder
-            .exec(fund_account(&admin_account_addr))
+            .exec(fund_account(&alice_account))
             .expect_success()
             .commit();
         builder
-            .exec(fund_account(&participant_two_account_addr))
+            .exec(fund_account(&bob_account))
             .expect_success()
             .commit();
         builder
-            .exec(fund_account(&participant_three_account_addr))
+            .exec(fund_account(&charlie_account))
             .expect_success()
             .commit();
 
-        // load contract into context
-        let code = PathBuf::from("escrow.wasm");
+        // install contract
+        let code = PathBuf::from("deposit_contract.wasm");
         deploy(
             &mut builder,
-            &admin_account_addr,
+            &alice_account,
             &DeploySource::Code(code),
             runtime_args! {},
             true,
             None,
         );
 
+        // query the contracts hash from alice account storage
         let contract_hash = query(
             &builder,
-            Key::Account(admin_account_addr),
-            &["escrow_contract_hash".to_string()],
+            Key::Account(alice_account),
+            &["deposit_contract_hash".to_string()],
         );
 
         Self {
             builder,
             contract_hash,
-            admin_account: (admin_public_key, admin_account_addr),
-            participant_two: (participant_two_public_key, participant_two_account_addr),
-            participant_three: (participant_three_public_key, participant_three_account_addr),
+            alice_account,
+            bob_account,
+            charlie_account,
         }
     }
     /// Getter function for the balance of an account.
@@ -83,20 +84,20 @@ impl PaymentContract {
     /// Shorthand to get the balances of all 3 accounts in order.
     pub fn get_all_accounts_balance(&self) -> (U512, U512, U512) {
         (
-            self.get_balance(&self.admin_account.1),
-            self.get_balance(&self.participant_two.1),
-            self.get_balance(&self.participant_three.1),
+            self.get_balance(&self.alice_account),
+            self.get_balance(&self.bob_account),
+            self.get_balance(&self.charlie_account),
         )
     }
 
-    /// Function that handles the creation and running of sessions.
-    fn call(&mut self, caller: AccountHash, method: &str, args: RuntimeArgs) {
+    /// Function that handles the creation and execution of deploys.
+    fn call(&mut self, caller: AccountHash, entry_point: &str, args: RuntimeArgs) {
         deploy(
             &mut self.builder,
             &caller,
             &DeploySource::ByContractHash {
                 hash: self.contract_hash,
-                method: method.to_string(),
+                entry_point: entry_point.to_string(),
             },
             args,
             true,
@@ -104,13 +105,13 @@ impl PaymentContract {
         );
     }
 
-    /// Calls the additional "deposit" contract with recipient and the hash of the escrow contract,
-    /// that creates a purse and transfers 100000000000000 motes into it,
-    /// then transfers said purse to the escrow contract.
+    /// Deploys the "deposit_session" with recipient and the hash of the "deposit_contract",
+    /// that creates a purse and transfers `amount` number of motes into it,
+    /// then transfers said purse to the deposit entry_point of the contract.
     pub fn deposit(&mut self, sender: AccountHash, recipient: Key, amount: U512) {
-        let code = PathBuf::from("deposit.wasm");
+        let code = PathBuf::from("deposit_session.wasm");
         let args = runtime_args! {
-            "escrow_contract_hash" => self.contract_hash,
+            "deposit_contract_hash" => self.contract_hash,
             "recipient" => recipient,
             "amount" => amount
         };
@@ -124,10 +125,13 @@ impl PaymentContract {
         );
     }
 
+    /// Deploy "deposit_into_session" that has the same arguments as "deposit_session", but instead of
+    /// passing in a purse to the contract to do a transfer of motes, this session asks the contract
+    /// for a purse and deposits motes into it.
     pub fn deposit_into(&mut self, sender: AccountHash, recipient: Key, amount: U512) {
-        let code = PathBuf::from("deposit_into.wasm");
+        let code = PathBuf::from("deposit_into_session.wasm");
         let args = runtime_args! {
-            "escrow_contract_hash" => self.contract_hash,
+            "deposit_contract_hash" => self.contract_hash,
             "recipient" => recipient,
             "amount" => amount
         };
@@ -141,7 +145,7 @@ impl PaymentContract {
         );
     }
 
-    /// Function that calls the `collect` endpoint on the escrow contract,
+    /// Function that calls the `collect` endpoint on the deposit contract,
     /// that directly transfers the amount in the purse stored to the accounts hash to the account.
     pub fn collect(&mut self, recipient: AccountHash) {
         self.call(
@@ -157,28 +161,30 @@ fn test_payment_and_collect() {
     // Setup example contract context
     let mut context = PaymentContract::deploy();
 
-    // Print the balance of all 3 users
+    // Print the balance of all 3 accounts
 
     let account_balances = context.get_all_accounts_balance();
     assert_eq!(account_balances.0, U512::from(48500000000000_u64));
     assert_eq!(account_balances.2, U512::from(50000000000000_u64));
 
-    // send tokens from admin to contract
+    // alice deposits motes into the contract for charlie to withdraw
     context.deposit(
-        context.admin_account.1,
-        Key::Account(context.participant_three.1),
+        context.alice_account,
+        Key::Account(context.charlie_account),
         U512::from(10000000000000u64),
     );
 
-    // look at balances again, admins money should be down by a deposited 10000000000000,
+    // look at balances again, alice money should be down by the deposited amount of 10000000000000,
     // and another 1500000000000 that is the contract deployment cost in the tests.
     let account_balances = context.get_all_accounts_balance();
     assert_eq!(account_balances.0, U512::from(37000000000000_u64));
     assert_eq!(account_balances.2, U512::from(50000000000000_u64));
 
-    // collect token to a third account
-    context.collect(context.participant_three.1);
+    // charlie collects his tokens from the deposit
+    context.collect(context.charlie_account);
 
+    // we verify that charlie indeed gained 10000000000000 motes
+    // (-1500000000000 that was the cost of calling `collect`)
     let account_balances = context.get_all_accounts_balance();
     assert_eq!(account_balances.0, U512::from(37000000000000_u64));
     assert_eq!(account_balances.2, U512::from(58500000000000_u64));
@@ -195,16 +201,17 @@ fn test_multiple_payment_and_single_collect() {
     assert_eq!(account_balances.1, U512::from(50000000000000_u64));
     assert_eq!(account_balances.2, U512::from(50000000000000_u64));
 
-    // Admin and Participant Two deposits money for Participant Three
+    // alice makes a deposit for charlie
     context.deposit(
-        context.admin_account.1,
-        Key::Account(context.participant_three.1),
+        context.alice_account,
+        Key::Account(context.charlie_account),
         U512::from(10000000000000u64),
     );
 
+    // bob also makes a deposit for charlie
     context.deposit(
-        context.participant_two.1,
-        Key::Account(context.participant_three.1),
+        context.bob_account,
+        Key::Account(context.charlie_account),
         U512::from(10000000000000u64),
     );
 
@@ -213,8 +220,8 @@ fn test_multiple_payment_and_single_collect() {
     assert_eq!(account_balances.1, U512::from(38500000000000_u64));
     assert_eq!(account_balances.2, U512::from(50000000000000_u64));
 
-    // Participant Three collects their money
-    context.collect(context.participant_three.1);
+    // charlie collects the deposits
+    context.collect(context.charlie_account);
 
     let account_balances = context.get_all_accounts_balance();
     assert_eq!(account_balances.0, U512::from(37000000000000_u64));
@@ -233,16 +240,16 @@ fn test_multiple_payment_and_single_collect_deposit_into() {
     assert_eq!(account_balances.1, U512::from(50000000000000_u64));
     assert_eq!(account_balances.2, U512::from(50000000000000_u64));
 
-    // Admin and Participant Two deposits money for Participant Three
+    // alice and bob make their deposits for charlie using "deposit_into_session"
     context.deposit_into(
-        context.admin_account.1,
-        Key::Account(context.participant_three.1),
+        context.alice_account,
+        Key::Account(context.charlie_account),
         U512::from(10000000000000u64),
     );
 
     context.deposit_into(
-        context.participant_two.1,
-        Key::Account(context.participant_three.1),
+        context.bob_account,
+        Key::Account(context.charlie_account),
         U512::from(10000000000000u64),
     );
 
@@ -251,8 +258,8 @@ fn test_multiple_payment_and_single_collect_deposit_into() {
     assert_eq!(account_balances.1, U512::from(38500000000000_u64));
     assert_eq!(account_balances.2, U512::from(50000000000000_u64));
 
-    // Participant Three collects their money
-    context.collect(context.participant_three.1);
+    // charlie collects the deposits
+    context.collect(context.charlie_account);
 
     let account_balances = context.get_all_accounts_balance();
     assert_eq!(account_balances.0, U512::from(37000000000000_u64));

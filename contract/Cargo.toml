@@ -1,5 +1,5 @@
 [package]
-name = "escrow_contract"
+name = "deposit_contract"
 version = "1.4.5"
 edition = "2018"
 
@@ -10,22 +10,22 @@ casper-contract = "1.4.3"
 casper-types = "1.4.6"
 
 [[bin]]
-name = "escrow"
-path = "src/escrow.rs"
+name = "deposit_contract"
+path = "src/deposit_contract.rs"
 bench = false
 doctest = false
 test = false
 
 [[bin]]
-name = "deposit"
-path = "src/deposit.rs"
+name = "deposit_session"
+path = "src/deposit_session.rs"
 bench = false
 doctest = false
 test = false
 
 [[bin]]
-name = "deposit_into"
-path = "src/deposit_into.rs"
+name = "deposit_into_session"
+path = "src/deposit_into_session.rs"
 bench = false
 doctest = false
 test = false

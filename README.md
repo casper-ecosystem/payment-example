@@ -7,7 +7,7 @@ Each account on the network has its own default purse (the `main_purse`), creati
 ## Purse access context
 
 Something important to mention is that not every purse action is available from anywhere.
-`transfer_from_purse_to_purse` is only possible when you caller have access rights to both purses. Namely `WRITE` and `READ` access to the purse they are transfering from, and `ADD` access to the purse they are trying to transfer to.
+`transfer_from_purse_to_purse` is only possible when the caller has access rights to both purses. Namely `WRITE` and `READ` access to the purse they are transferring from, and `ADD` access to the purse they are trying to transfer to.
 An example with elevated importance is the `main_purse` of accounts. You can only withdraw from this purse in the session context of the owning account, and `WRITE` byte is removed automatically when you transfer a `URef` to the `main_purse` from the owners session. 
 If you want to `transfer_from_purse_to_account` on the other hand, you need only have access right to the purse you transfer from, and the transfer still ends up in the accounts `main_purse`.
 

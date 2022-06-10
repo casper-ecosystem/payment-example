@@ -28,7 +28,7 @@ Calling the deposit endpoint requires a `purse` as a parameter, as such you need
 | return | - | - |
 
 ### Collect
-Purses can be withdrawn from if there are READ and WRITE bytes on the containing `URef`. When you transfer to your account, the transfer ends up in your main_purse, so when depositing there, there is no need to take the extra step of fetching the main_purse.
+Purses can be withdrawn from if there are READ and WRITE bytes on the associated `URef`. When you transfer to your account, the transfer ends up in your main_purse. When depositing there is no need to take the extra step of fetching the main_purse.
 
 Since collecting is done by transfering motes from the purse contained in the contract straight into the callers account, the only parameter is an `Option<U512>` argument called `amount`.
 

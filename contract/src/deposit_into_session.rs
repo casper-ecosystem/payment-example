@@ -1,10 +1,11 @@
 #![no_main]
 #![no_std]
 
-use casper_contract::contract_api::{account, runtime, system};
-use casper_contract::unwrap_or_revert::UnwrapOrRevert;
-use casper_types::{runtime_args, ContractHash, RuntimeArgs};
-use casper_types::{Key, URef};
+use casper_contract::{
+    contract_api::{account, runtime, system},
+    unwrap_or_revert::UnwrapOrRevert,
+};
+use casper_types::{runtime_args, ContractHash, Key, RuntimeArgs, URef};
 mod constants;
 use constants::{AMOUNT, DEPOSIT_CONTRACT_HASH, DEPOSIT_RECIPIENT, GET_DEPOSIT_PURSE};
 

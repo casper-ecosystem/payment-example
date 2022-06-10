@@ -2,23 +2,23 @@
 # Purse usage example
 
 This example demonstrates the usage of `purse`s to transfer motes inside a contract.
-Each account on the network has its own default purse (the `main_purse`), creation of new purses inside contracts and session code is possible, and the creating context has full access to the purse by default. Access to purses can be limited by stripping `READ|ADD|WRITE` bytes from the `URef` that holds the purse.
+Each account on the network has its own default purse (the `main_purse`). Creation of new purses inside contracts and session code is possible, and the creating context has full access to the purse by default. Access to purses can be limited by stripping `READ|ADD|WRITE` bytes from the `URef` that holds the purse.
 
 ## Purse access context
 
-Something important to mention is that not every purse action is available from anywhere.
+It is important to note that not every purse action is available from any context.
 `transfer_from_purse_to_purse` is only possible when the caller has access rights to both purses. Namely `WRITE` and `READ` access to the purse they are transferring from, and `ADD` access to the purse they are trying to transfer to.
 An example with elevated importance is the `main_purse` of accounts. You can only withdraw from this purse in the session context of the owning account, and `WRITE` byte is removed automatically when you transfer a `URef` to the `main_purse` from the owners session. 
 If you want to `transfer_from_purse_to_account` on the other hand, you need only have access rights to the purse you transfer from, and will only transfer to the target account's `main_purse`.
 
 You also cannot just "reconstruct" a URef that holds a purse from its bytes in a different contract.
 
-You also cannot store purses in contract dictionaries, as using such a purse when used will revert with a `ForgedReference` error.
+You also cannot store purses in contract dictionaries, as such a purse when used will revert with a `ForgedReference` error.
 This means that a purse stored in a dictionary will become unusable, and as such you should not do this.
 
 ## Contract Entrypoints
 ### Deposit
-Calling the deposit endpoint requires a `purse` as a parameter, as such you need a session code that creates a purse, transfers motes into it, and calls the endpoint with it.
+Calling the deposit endpoint requires a `purse` as a parameter, as such you need separate logic which could be either session code or another smart contract, that creates a purse, transfers motes into it, and calls the endpoint with it.
 
 |-| Name | Type |
 |---|---|---|

@@ -1,7 +1,7 @@
 
 # Purse usage example
 
-This example demonstrates the usage of `purse`s to transfer motes inside contract.
+This example demonstrates the usage of `purse`s to transfer motes inside a contract.
 Each account on the network has its own default purse (the `main_purse`), creation of new purses inside contracts and session code is possible, and the creating context has full access to the purse by default. Access to purses can be limited by stripping `READ|ADD|WRITE` bytes from the `URef` that holds the purse.
 
 ## Purse access context

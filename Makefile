@@ -22,9 +22,10 @@ format:
 lint: clippy format
 
 build-contract:
-	cargo build --release -p escrow_contract --target wasm32-unknown-unknown
-	wasm-strip target/wasm32-unknown-unknown/release/escrow.wasm
-	wasm-strip target/wasm32-unknown-unknown/release/deposit.wasm
+	cargo build --release -p deposit_contract --target wasm32-unknown-unknown
+	wasm-strip target/wasm32-unknown-unknown/release/deposit_contract.wasm
+	wasm-strip target/wasm32-unknown-unknown/release/deposit_session.wasm
+	wasm-strip target/wasm32-unknown-unknown/release/deposit_into_session.wasm
 
 clean:
 	cargo clean

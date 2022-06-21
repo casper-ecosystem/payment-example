@@ -1,28 +1,31 @@
 [package]
-name = "escrow_contract"
-version = "0.1.0"
+name = "deposit_contract"
+version = "1.5.0"
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-casper-contract = "1.4.1"
-casper-types = "1.4.1"
+casper-contract = "1.4.4"
+casper-types = "1.5.0"
 
 [[bin]]
-name = "escrow"
-path = "src/escrow.rs"
+name = "deposit_contract"
+path = "src/deposit_contract.rs"
 bench = false
 doctest = false
 test = false
 
 [[bin]]
-name = "deposit"
-path = "src/deposit.rs"
+name = "deposit_session"
+path = "src/deposit_session.rs"
 bench = false
 doctest = false
 test = false
 
-[features]
-default = ["std"]
-std = ["casper-contract/std", "casper-types/std"]
+[[bin]]
+name = "deposit_into_session"
+path = "src/deposit_into_session.rs"
+bench = false
+doctest = false
+test = false

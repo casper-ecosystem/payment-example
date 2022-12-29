@@ -1,6 +1,10 @@
+PINNED_TOOLCHAIN := $(shell cat rust-toolchain)
+
 prepare:
 	rustup default nightly-2021-06-17-x86_64-unknown-linux-gnu
 	rustup target add wasm32-unknown-unknown
+	rustup component add clippy --toolchain ${PINNED_TOOLCHAIN}
+	rustup component add rustfmt --toolchain ${PINNED_TOOLCHAIN}
 
 rust-test-only:
 	cargo test -p tests
